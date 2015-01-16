@@ -1,0 +1,32 @@
+{
+  "name": "ampersand-chess",
+  "description": "An ampersand.js chess board.",
+  "version": "1.0.0",
+  "author": "Luke Karrys <luke@lukekarrys.com>",
+  "dependencies": {
+    "ampersand-state": "^4.4.4",
+    "chess.js": "^0.1.0"
+  },
+  "devDependencies": {
+    "browserify": "^8.1.1",
+    "function-bind": "^1.0.2",
+    "jshint": "^2.5.11",
+    "phantomjs": "^1.9.13",
+    "precommit-hook": "^1.0.7",
+    "run-browser": "^2.0.1",
+    "tap-spec": "^2.1.2",
+    "tape": "^3.2.0",
+    "tape-run": "^0.3.0"
+  },
+  "keywords": [
+    "ampersand",
+    "chess",
+    "chessboard"
+  ],
+  "license": "MIT",
+  "main": "ampersand-chess.js",
+  "scripts": {
+    "start": "./node_modules/.bin/run-browser test/* --port 3001",
+    "test": "./node_modules/.bin/browserify test/*.js | tape-run | tap-spec"
+  }
+}
