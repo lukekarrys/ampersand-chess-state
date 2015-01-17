@@ -31,7 +31,9 @@ module.exports = State.extend({
         history: ['array', true, emptyArray],
         future: ['array', true, emptyArray],
         valid: 'boolean',
-        errorMessage: 'string'
+        errorMessage: 'string',
+        finished: 'boolean',
+        freezeOnFinish: ['boolean', true, false]
     },
 
 
@@ -221,20 +223,33 @@ module.exports = State.extend({
         }
     },
     _updateStatus: function () {
-        this.valid = true;
-        this.errorMessage = '';
-        this.start = this.engine.fen() === START_FEN;
-        this.empty = this.engine.fen() === EMPTY_FEN;
-        this.checkmate = this.engine.in_checkmate();
-        this.check = this.engine.in_check();
-        this.draw = this.engine.in_draw();
-        this.stalemate = this.engine.in_stalemate();
-        this.threefoldRepetition = this.engine.in_threefold_repetition();
-        this.insufficientMaterial = this.engine.insufficient_material();
-        this.gameOver = this.engine.game_over();
+        if (!this.finished || (this.finished && !this.freezeOnFinish)) {
+            this.valid = true;
+            this.errorMessage = '';
+            this.start = this.engine.fen() === START_FEN;
+            this.empty = this.engine.fen() === EMPTY_FEN;
+            this.checkmate = this.engine.in_checkmate();
+            this.check = this.engine.in_check();
+            this.draw = this.engine.in_draw();
+            this.stalemate = this.engine.in_stalemate();
+            this.threefoldRepetition = this.engine.in_threefold_repetition();
+            this.insufficientMaterial = this.engine.insufficient_material();
+            this.gameOver = this.engine.game_over();
+            
+            this.pgn = this.engine.pgn();
+            this.turn = this.engine.turn() === 'b' ? 'black' : 'white';
+        }
+
+        // Only set this once
+        if (this.gameOver) {
+            this.finished = true;
+        }
+        else if (!this.finished) {
+            this.finished = false;
+        }
+
+        // These should get updated no matter if the game has been finished
         this.ascii = this.engine.ascii();
-        this.pgn = this.engine.pgn();
-        this.turn = this.engine.turn() === 'b' ? 'black' : 'white';
         this.history = this.engine.history();
         this.moves = this.engine.moves();
     }

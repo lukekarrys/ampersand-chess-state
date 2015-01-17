@@ -5,7 +5,8 @@
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "dependencies": {
     "ampersand-state": "^4.4.4",
-    "chess.js": "^0.1.0"
+    "chess.js": "^0.1.0",
+    "raf": "^2.0.4"
   },
   "devDependencies": {
     "browserify": "^8.1.1",
@@ -26,7 +27,7 @@
   "license": "MIT",
   "main": "ampersand-chess.js",
   "scripts": {
-    "start": "./node_modules/.bin/run-browser test/* --port 3001",
-    "test": "./node_modules/.bin/browserify test/*.js | tape-run | tap-spec"
+    "start": "run-browser test/* --port 3001",
+    "test": "browserify test/*.js | tape-run | tap-spec"
   }
 }

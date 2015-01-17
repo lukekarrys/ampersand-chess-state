@@ -271,3 +271,56 @@ test('Moves with history', function (t) {
 
     t.end();
 });
+
+test('Once a game has been over it is always finished', function (t) {
+    var chess = new Chess({
+        fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4'
+    });
+
+    t.equal(chess.checkmate, false);
+    t.equal(chess.finished, false);
+    t.equal(chess.gameOver, false);
+
+    chess.move('Qxf7#');
+    t.equal(chess.checkmate, true);
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, true);
+
+    chess.undo();
+    t.equal(chess.checkmate, false);
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, false);
+
+    chess.redo();
+    t.equal(chess.checkmate, true);
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, true);
+
+    chess = new Chess({
+        fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4',
+        freezeOnFinish: true
+    });
+
+    t.equal(chess.checkmate, false);
+    t.equal(chess.finished, false);
+    t.equal(chess.gameOver, false);
+
+    chess.move('Qxf7#');
+    t.equal(chess.checkmate, true);
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, true);
+
+    chess.undo();
+    t.equal(chess.checkmate, true, 'freeze checkmate');
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, true);
+
+    chess.redo();
+    t.equal(chess.checkmate, true);
+    t.equal(chess.finished, true);
+    t.equal(chess.gameOver, true);
+
+    t.end();
+});
+
+
