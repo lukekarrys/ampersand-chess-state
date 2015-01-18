@@ -1,8 +1,28 @@
 var State = require('ampersand-state');
 var Engine = require('chess.js').Chess;
+var raf = require('raf');
 var slice = Array.prototype.slice;
 var emptyArray = function () {
     return [];
+};
+var runEngine = function (method, key, deps) {
+    return {
+        deps: ['fen'].concat(key ? ['finished', 'freezeOnFinish'] : []).concat(deps ? deps : []),
+        fn: function () {
+            // Only update these status properties if the game is not finished
+            // This allows for replay of games where 'checkmate' will always be true
+            // based on the result
+            if (key && this._cache.hasOwnProperty(key) && this.finished && this.freezeOnFinish)  {
+                return this._cache[key];
+            }
+
+            if (typeof method === 'function') {
+                return method.call(this);
+            }
+
+            return this.engine[method]();
+        }
+    };
 };
 
 var START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -11,33 +31,87 @@ var EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
 module.exports = State.extend({
     props: {
+        blackTime: ['number', true, -1],
+        whiteTime: ['number', true, -1],
         fen: ['string', true, START_FEN],
-        start: 'boolean',
-        empty: 'boolean',
-        checkmate: 'boolean',
-        check: 'boolean',
-        draw: 'boolean',
-        stalemate: 'boolean',
-        threefoldRepetition: 'boolean',
-        insufficientMaterial: 'boolean',
-        gameOver: 'boolean',
-        ascii: 'string',
-        pgn: 'string',
-        turn: {
-            type: 'string',
-            values: ['black', 'white']
-        },
-        moves: ['array', true, emptyArray],
-        history: ['array', true, emptyArray],
         future: ['array', true, emptyArray],
+        history: ['array', true, emptyArray],
         valid: 'boolean',
         errorMessage: 'string',
-        finished: 'boolean',
         freezeOnFinish: ['boolean', true, false]
     },
 
-
     derived: {
+        // All these properties are guarded by this.finished
+        // meaning if the game is finished none of these properties will change
+        // unless freezeOnFinish is false
+        start: runEngine(function () { return this.fen === START_FEN; }, 'start'),
+        empty: runEngine(function () { return this.fen === EMPTY_FEN; }, 'empty'),
+        checkmate: runEngine('in_checkmate', 'checkmate'),
+        check: runEngine('in_check', 'check'),
+        draw: runEngine('in_draw', 'draw'),
+        stalemate: runEngine('in_stalemate', 'stalemate'),
+        threefoldRepetition: runEngine('in_threefold_repetition', 'threefoldRepetition'),
+        insufficientMaterial: runEngine('insufficient_material', 'insufficientMaterial'),
+        engineOver: runEngine('game_over', 'engineOver'),
+        finalPgn: runEngine(function () {
+            return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
+        }, 'finalPgn', ['pgn']),
+        pgn: runEngine('pgn', 'pgn'),
+        turn: runEngine(function () { return this.engine.turn() === 'b' ? 'black' : 'white'; }, 'turn'),
+
+        ascii: runEngine('ascii'),
+        moves: runEngine('moves'),
+        engineHistory: {
+            deps: ['fen', 'history'],
+            fn: function () {
+                this.history = this.engine.history();
+                return this.history;
+            }
+        },
+
+        pgnArray: {
+            deps: ['canUndo', 'canRedo', 'history', 'finalPgn'],
+            fn: function () {
+                var pgn = this.finalPgn;
+
+                if (this.canUndo || this.canRedo) {
+                    var current = this.history.length;
+                    var count = 0;
+                    pgn = pgn.map(function (move) {
+                        var isMove = move.match(/^\d+\.\s/);
+                        var plys, result = {};
+
+                        if (isMove) {
+                            plys = move.replace(isMove[0], '').split(' ');
+                            result.move = isMove[0].replace('. ', '');
+                            result.ply1 = {san: plys[0]};
+                            result.ply2 = {san: plys[1] || ''};
+
+                            count++;
+
+                            if (count === current) {
+                                result.ply1.active = true;
+                            }
+
+                            if (result.ply2.san) {
+                                count++;
+                                if (count === current) {
+                                    result.ply2.active = true;
+                                }
+                            }
+
+                            return result;
+                        }
+
+                        return move;
+                    });
+                }
+
+                return pgn;
+            }
+        },
+
         canRedo: {
             deps: ['future'],
             fn: function () {
@@ -51,19 +125,34 @@ module.exports = State.extend({
             }
         },
         winner: {
-            deps: ['checkmate', 'turn'],
+            deps: ['checkmate', 'turn', 'blackTime', 'whiteTime'],
             fn: function () {
-                if (this.checkmate) {
+                if (this.blackTime === 0) {
+                    return 'white';
+                }
+                else if (this.whiteTime === 0) {
+                    return 'black';
+                }
+                else if (this.checkmate) {
                     return this.turn === 'black' ? 'white' : 'black';
                 }
             }
         },
+        gameOver: {
+            deps: ['engineOver', 'lostOnTime'],
+            fn: function () {
+                return this.engineOver || this.lostOnTime;
+            }
+        },
         endResult: {
-            deps: ['gameOver', 'draw', 'stalemate', 'threefoldRepetition', 'insufficientMaterial'],
+            deps: ['gameOver', 'lostOnTime', 'draw', 'stalemate', 'threefoldRepetition', 'insufficientMaterial'],
             fn: function () {
                 var result;
                 if (this.gameOver) {
-                    if (this.checkmate) {
+                    if (this.lostOnTime) {
+                        result = 'Lost on time';
+                    }
+                    else if (this.checkmate) {
                         result = 'Checkmate';
                     }
                     else if (this.draw) {
@@ -81,6 +170,23 @@ module.exports = State.extend({
                 }
                 return result;
             }
+        },
+        lostOnTime: {
+            deps: ['blackTime', 'whiteTime'],
+            fn: function () {
+                return this.whiteTime === 0 || this.blackTime === 0;
+            }
+        },
+        finished: {
+            deps: ['gameOver'],
+            fn: function () {
+                // Once a game is over it is always "finished"
+                if (typeof this._cache.finished !== 'undefined' && this._cache.finished) {
+                    return true;
+                }
+
+                return this.gameOver;
+            }
         }
     },
 
@@ -89,6 +195,33 @@ module.exports = State.extend({
         this.engine = new Engine();
         this.on('change:fen', this._testFen);
         this._testFen(this, this.fen);
+        this.once('change:start', this.startGame);
+    },
+
+    // ------------------------
+    // Turn timing
+    // ------------------------
+    startGame: function () {
+        this.startTurn(this, this.turn);
+        this.on('change:turn', this.startTurn);
+    },
+    startTurn: function (model, turn) {
+        this._now = Date.now();
+
+        // Cancel previous turn
+        if (this._countdownId) {
+            raf.cancel(this._countdownId);
+        }
+
+        this._countdownId = raf(this.continueTurn.bind(this, model, turn));
+    },
+    continueTurn: function (model, turn) {
+        var now = Date.now();
+        var elapsed = now - this._now;
+        this._now = now;
+        var key = turn === 'black' ? 'blackTime' : 'whiteTime';
+        this[key] = Math.max(0, this[key] - elapsed);
+        this._countdownId = raf(this.continueTurn.bind(this, model, turn));
     },
 
     // ------------------------
@@ -174,10 +307,10 @@ module.exports = State.extend({
         this._updateFenFromEngine({multipleMoves: true});
         return move;
     },
-    random: function () {
+    random: function (options) {
         var move = this.moves[Math.floor(Math.random() * this.moves.length)];
         if (move) {
-            this.move(move);
+            this.move(move, options);
         }
         return move;
     },
@@ -214,43 +347,17 @@ module.exports = State.extend({
         var validity = this.engine.validate_fen(fen);
         if (validity.valid) {
             if (!options || !options.fromEngine) {
-                this.engine.load(this.fen);
+                // Loading a fen into the enginge will
+                // disrupt the current game, clearing the history
+                // and resetting the pgn so we until do this action
+                // if the fen change did not come from the engine
+                this.engine.load(fen);
             }
-            this._updateStatus(options);
+            this.errorMessage = '';
+            this.valid = true;
         } else {
             this.errorMessage = validity.error;
             this.valid = false;
         }
-    },
-    _updateStatus: function () {
-        if (!this.finished || (this.finished && !this.freezeOnFinish)) {
-            this.valid = true;
-            this.errorMessage = '';
-            this.start = this.engine.fen() === START_FEN;
-            this.empty = this.engine.fen() === EMPTY_FEN;
-            this.checkmate = this.engine.in_checkmate();
-            this.check = this.engine.in_check();
-            this.draw = this.engine.in_draw();
-            this.stalemate = this.engine.in_stalemate();
-            this.threefoldRepetition = this.engine.in_threefold_repetition();
-            this.insufficientMaterial = this.engine.insufficient_material();
-            this.gameOver = this.engine.game_over();
-            
-            this.pgn = this.engine.pgn();
-            this.turn = this.engine.turn() === 'b' ? 'black' : 'white';
-        }
-
-        // Only set this once
-        if (this.gameOver) {
-            this.finished = true;
-        }
-        else if (!this.finished) {
-            this.finished = false;
-        }
-
-        // These should get updated no matter if the game has been finished
-        this.ascii = this.engine.ascii();
-        this.history = this.engine.history();
-        this.moves = this.engine.moves();
     }
 });

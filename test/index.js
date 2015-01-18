@@ -323,4 +323,26 @@ test('Once a game has been over it is always finished', function (t) {
     t.end();
 });
 
+test('timing', function (t) {
+    var startTime = 1000 * 60 * 5;
+    var chess = new Chess({
+        blackTime: startTime,
+        whiteTime: startTime
+    });
 
+    chess.on('change:blackTime', function (model, time) {
+        if (time < startTime - 500) {
+            chess.random();
+            chess.off('change:blackTime');
+        }
+    });
+
+    chess.on('change:whiteTime', function (model, time) {
+        if (time < startTime - 500) {
+            chess.off('change:whiteTime');
+            t.end();
+        }
+    });
+
+    chess.random();
+});
