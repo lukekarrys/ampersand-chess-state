@@ -2,12 +2,13 @@ var State = require('ampersand-state');
 var Engine = require('chess.js').Chess;
 var raf = require('raf');
 var slice = Array.prototype.slice;
-var emptyArray = function () {
-    return [];
-};
+var emptyArray = function () { return []; };
 var runEngine = function (method, key, deps) {
     return {
-        deps: ['fen'].concat(key ? ['finished', 'freezeOnFinish'] : []).concat(deps ? deps : []),
+        deps: ['fen', 'pgn']
+                // key means this property will be "frozen" once the game is finished
+                .concat(key ? ['finished', 'freezeOnFinish'] : [])
+                .concat(deps ? deps : []),
         fn: function () {
             // Only update these status properties if the game is not finished
             // This allows for replay of games where 'checkmate' will always be true
@@ -25,6 +26,10 @@ var runEngine = function (method, key, deps) {
     };
 };
 
+// Used for loading possibly invalid pgns without
+// changing the actual state engine
+var internalEngine = new Engine();
+
 var START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 var EMPTY_FEN = '8/8/8/8/8/8/8/8 w - - 0 1';
 
@@ -34,6 +39,7 @@ module.exports = State.extend({
         blackTime: ['number', true, -1],
         whiteTime: ['number', true, -1],
         fen: ['string', true, START_FEN],
+        pgn: ['string', true, ''],
         future: ['array', true, emptyArray],
         history: ['array', true, emptyArray],
         valid: 'boolean',
@@ -56,14 +62,13 @@ module.exports = State.extend({
         engineOver: runEngine('game_over', 'engineOver'),
         finalPgn: runEngine(function () {
             return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
-        }, 'finalPgn', ['pgn']),
-        pgn: runEngine('pgn', 'pgn'),
+        }, 'finalPgn'),
         turn: runEngine(function () { return this.engine.turn() === 'b' ? 'black' : 'white'; }, 'turn'),
 
         ascii: runEngine('ascii'),
         moves: runEngine('moves'),
         engineHistory: {
-            deps: ['fen', 'history'],
+            deps: ['fen', 'pgn', 'history'],
             fn: function () {
                 this.history = this.engine.history();
                 return this.history;
@@ -193,9 +198,15 @@ module.exports = State.extend({
 
     initialize: function () {
         this.engine = new Engine();
+        
         this.on('change:fen', this._testFen);
-        this._testFen(this, this.fen);
+        this.fen && this._testFen(this, this.fen);
+
+        this.on('change:pgn', this._testPgn);
+        this.pgn && this._testPgn(this, this.pgn);
+
         this.once('change:start', this.startGame);
+        this.once('change:finished', this.cancelTurn);
     },
 
     // ------------------------
@@ -207,12 +218,7 @@ module.exports = State.extend({
     },
     startTurn: function (model, turn) {
         this._now = Date.now();
-
-        // Cancel previous turn
-        if (this._countdownId) {
-            raf.cancel(this._countdownId);
-        }
-
+        this.cancelTurn();
         this._countdownId = raf(this.continueTurn.bind(this, model, turn));
     },
     continueTurn: function (model, turn) {
@@ -222,6 +228,9 @@ module.exports = State.extend({
         var key = turn === 'black' ? 'blackTime' : 'whiteTime';
         this[key] = Math.max(0, this[key] - elapsed);
         this._countdownId = raf(this.continueTurn.bind(this, model, turn));
+    },
+    cancelTurn: function () {
+        this._countdownId && raf.cancel(this._countdownId);
     },
 
     // ------------------------
@@ -327,6 +336,7 @@ module.exports = State.extend({
         var last = arguments[arguments.length - 1];
         var options = typeof last === 'object' ? last : undefined;
         this._updateFenFromEngine(options);
+        this._updatePgnFromEngine(options);
         return response;
     },
     _proxy: function () {
@@ -338,10 +348,16 @@ module.exports = State.extend({
     // ------------------------
     // Private methods
     // ------------------------
-    _updateFenFromEngine: function (options) {
+    _updateFromEngine: function (key, options) {
         options || (options = {});
         options.fromEngine = true;
-        this.set('fen', this.engine.fen(), options);
+        this.set(key, this.engine[key](), options);
+    },
+    _updateFenFromEngine: function (options) {
+        this._updateFromEngine('fen', options);
+    },
+    _updatePgnFromEngine: function (options) {
+        this._updateFromEngine('pgn', options);
     },
     _testFen: function (model, fen, options) {
         var validity = this.engine.validate_fen(fen);
@@ -357,6 +373,23 @@ module.exports = State.extend({
             this.valid = true;
         } else {
             this.errorMessage = validity.error;
+            this.valid = false;
+        }
+    },
+    _testPgn: function (model, pgn, options) {
+        var valid = internalEngine.load_pgn(pgn);
+        if (valid) {
+            if (!options || !options.fromEngine) {
+                // Loading a pgn into the enginge will
+                // disrupt the current game, clearing the history
+                // and resetting the pgn so we until do this action
+                // if the fen change did not come from the engine
+                this.engine.load_pgn(pgn);
+            }
+            this.errorMessage = '';
+            this.valid = true;
+        } else {
+            this.errorMessage = 'Invalid pgn';
             this.valid = false;
         }
     }
