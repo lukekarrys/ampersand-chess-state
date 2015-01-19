@@ -3,25 +3,34 @@ var Engine = require('chess.js').Chess;
 var raf = require('raf');
 var slice = Array.prototype.slice;
 var emptyArray = function () { return []; };
-var runEngine = function (method, key, deps) {
+var runEngine = function (method, guard, deps) {
     return {
         deps: ['fen', 'pgn']
-                // key means this property will be "frozen" once the game is finished
-                .concat(key ? ['finished', 'freezeOnFinish'] : [])
+                // guard means this property will be "frozen" once the game is finished
+                .concat(guard ? ['finished', 'freezeOnFinish'] : [])
                 .concat(deps ? deps : []),
         fn: function () {
-            // Only update these status properties if the game is not finished
-            // This allows for replay of games where 'checkmate' will always be true
-            // based on the result
-            if (key && this._cache.hasOwnProperty(key) && this.finished && this.freezeOnFinish)  {
-                return this._cache[key];
-            }
+            var value;
 
             if (typeof method === 'function') {
-                return method.call(this);
+                value = method.call(this);
+            } else {
+                value = this.engine[method]();
             }
 
-            return this.engine[method]();
+            // Only update these status properties if the game is not finished
+            // This allows for replay of games where 'checkmate' (for example)
+            // will always be true based on the result
+            if (guard && this._cache.hasOwnProperty(guard) && this.finished && this.freezeOnFinish) {
+                // If this is the first time computing thie property since the game
+                // has finished, then do one more calculation of the value
+                // to get the true end-of-game value
+                var hasBeenGuarded = this._guard[guard];
+                this._guard[guard] = true;
+                return hasBeenGuarded ? this._cache[guard] : value;
+            }
+
+            return value;
         }
     };
 };
@@ -40,11 +49,14 @@ module.exports = State.extend({
         whiteTime: ['number', true, -1],
         fen: ['string', true, START_FEN],
         pgn: ['string', true, ''],
+        freezeOnFinish: ['boolean', true, false]
+    },
+
+    session: {
         future: ['array', true, emptyArray],
         history: ['array', true, emptyArray],
         valid: 'boolean',
         errorMessage: 'string',
-        freezeOnFinish: ['boolean', true, false]
     },
 
     derived: {
@@ -64,6 +76,7 @@ module.exports = State.extend({
             return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
         }, 'finalPgn'),
         turn: runEngine(function () { return this.engine.turn() === 'b' ? 'black' : 'white'; }, 'turn'),
+        
 
         ascii: runEngine('ascii'),
         moves: runEngine('moves'),
@@ -94,7 +107,6 @@ module.exports = State.extend({
                             result.ply2 = {san: plys[1] || ''};
 
                             count++;
-
                             if (count === current) {
                                 result.ply1.active = true;
                             }
@@ -197,6 +209,7 @@ module.exports = State.extend({
 
 
     initialize: function () {
+        this._guard = {};
         this.engine = new Engine();
         
         this.on('change:fen', this._testFen);
@@ -208,6 +221,7 @@ module.exports = State.extend({
         this.once('change:start', this.startGame);
         this.once('change:finished', this.cancelTurn);
     },
+
 
     // ------------------------
     // Turn timing
@@ -226,12 +240,18 @@ module.exports = State.extend({
         var elapsed = now - this._now;
         this._now = now;
         var key = turn === 'black' ? 'blackTime' : 'whiteTime';
+
+        if (this[key] === -1) {
+            return this.cancelTurn();
+        }
+
         this[key] = Math.max(0, this[key] - elapsed);
         this._countdownId = raf(this.continueTurn.bind(this, model, turn));
     },
     cancelTurn: function () {
         this._countdownId && raf.cancel(this._countdownId);
     },
+
 
     // ------------------------
     // Engine proxy methods
@@ -280,7 +300,7 @@ module.exports = State.extend({
             move = this._proxyAndUpdate('undo', options);
         }
         if (move) {
-            this.future = this.future.concat(move);
+            this.future = this.future.concat(move.san);
         }
         return move;
     },
@@ -327,6 +347,7 @@ module.exports = State.extend({
         this._proxyAndUpdate('clear', options);
     },
 
+
     // ------------------------
     // This proxies a method and updates our state object with
     // the latest fen
@@ -344,6 +365,7 @@ module.exports = State.extend({
         var next = slice.call(arguments, 1);
         return this.engine[method].apply(this.engine, next);
     },
+
 
     // ------------------------
     // Private methods

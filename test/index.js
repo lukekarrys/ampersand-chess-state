@@ -226,13 +226,29 @@ test('Repetition', function (t) {
     t.end();
 });
 
-test('Checkmate/winner', function (t) {
+test('Checkmate/winner fen', function (t) {
     var chess = new Chess({fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4'});
+
     t.equal(chess.checkmate, false);
     t.equal(chess.gameOver, false);
     t.equal(chess.winner, void 0);
 
     chess.move('Qxf7#');
+    t.equal(chess.checkmate, true);
+    t.equal(chess.gameOver, true);
+    t.equal(chess.winner, 'white');
+
+    t.end();
+});
+
+test('Checkmate/winner pgn', function (t) {
+    var chess = new Chess({pgn: '1. e4 e5 2. f4 Nc6 3. fxe5 Qh4+ 4. g3 Qxh2 5. Rxh2 Ke7 6. Rxh7 f6 7. Rxh8 a6 8. Rxg8 a5 9. Rxf8 Nd8 10. Rxd8 Kf7 11. Rxc8 Rb8 12. Rxb8 Ke6 13. Rxb7 Ke7 14. Rxc7 g6 15. Rxd7+ Kf8 16. Rf7+ Ke8 17. Rxf6 Kd8 18. Rxg6 Kd7 19. Ra6 Ke7 20. Rxa5 Kd8 21. d4 Kc8 22. e6 Kb8 23. e7 Kb7 24. e8=Q Kc7 25. Ra7+ Kd6 26. Qe5+ Kc6 27. Ra5 Kd7 28. Ra6 Kd8 29. Qe7+ Kc8'});
+
+    t.equal(chess.checkmate, false);
+    t.equal(chess.gameOver, false);
+    t.equal(chess.winner, void 0);
+
+    chess.move('Ra8#');
     t.equal(chess.checkmate, true);
     t.equal(chess.gameOver, true);
     t.equal(chess.winner, 'white');
@@ -267,7 +283,6 @@ test('Moves with history', function (t) {
     t.equal(chess.canRedo, false);
     t.equal(chess.history.length, 7);
     t.equal(chess.future.length, 0);
-
 
     t.end();
 });
@@ -323,6 +338,26 @@ test('Once a game has been over it is always finished', function (t) {
     t.end();
 });
 
+test('finished race condition', function (t) {
+    var chess = new Chess({freezeOnFinish: true});
+
+    chess.pgn = '1. e4 e5 2. f4 Nc6 3. fxe5 Qh4+ 4. g3 Qxh2 5. Rxh2 Ke7 6. Rxh7 f6 7. Rxh8 a6 8. Rxg8 a5 9. Rxf8 Nd8 10. Rxd8 Kf7 11. Rxc8 Rb8 12. Rxb8 Ke6 13. Rxb7 Ke7 14. Rxc7 g6 15. Rxd7+ Kf8 16. Rf7+ Ke8 17. Rxf6 Kd8 18. Rxg6 Kd7 19. Ra6 Ke7 20. Rxa5 Kd8 21. d4 Kc8 22. e6 Kb8 23. e7 Kb7 24. e8=Q Kc7 25. Ra7+ Kd6 26. Qe5+ Kc6 27. Ra5 Kd7 28. Ra6 Kd8 29. Qe7+ Kc8';
+
+    // Winner will be white but will trigger once as black
+    // TODO: ok for now but not ideal
+    // This triggers because checkmate triggers before the turn changes
+    // and then once the turn changes its correct
+    var count = 0;
+
+    chess.on('change:winner', function () {
+        if (count++ === 0) return;
+        t.equal(chess.winner, 'white');
+        t.end();
+    });
+
+    chess.move('Ra8#');
+});
+
 test('timing', function (t) {
     var startTime = 1000 * 60 * 5;
     var chess = new Chess({
@@ -347,7 +382,7 @@ test('timing', function (t) {
     chess.random();
 });
 
-test('pgn', function (t) {
+test('pgn history and active', function (t) {
     var chess = new Chess();
 
     chess.pgn = '1. e4 e5 2. f4 Nc6 3. fxe5 Qh4+ 4. g3 Qxh2 5. Rxh2 Ke7 6. Rxh7 f6 7. Rxh8 a6 8. Rxg8 a5 9. Rxf8 Nd8 10. Rxd8 Kf7 11. Rxc8 Rb8 12. Rxb8 Ke6 13. Rxb7 Ke7 14. Rxc7 g6 15. Rxd7+ Kf8 16. Rf7+ Ke8 17. Rxf6 Kd8 18. Rxg6 Kd7 19. Ra6 Ke7 20. Rxa5 Kd8 21. d4 Kc8 22. e6 Kb8 23. e7 Kb7 24. e8=Q Kc7 25. Ra7+ Kd6 26. Qe5+ Kc6 27. Ra5 Kd7 28. Ra6 Kd8 29. Qe7+ Kc8 30. Ra8#';
