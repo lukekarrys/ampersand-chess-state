@@ -6,6 +6,7 @@
   "dependencies": {
     "ampersand-state": "^4.4.4",
     "chess.js": "^0.1.0",
+    "curry": "^1.2.0",
     "raf": "^2.0.4"
   },
   "devDependencies": {

@@ -1,39 +1,11 @@
-var State = require('ampersand-state');
-var Engine = require('chess.js').Chess;
 var raf = require('raf');
 var slice = Array.prototype.slice;
-var emptyArray = function () { return []; };
-var runEngine = function (method, guard, deps) {
-    return {
-        deps: ['fen', 'pgn']
-                // guard means this property will be "frozen" once the game is finished
-                .concat(guard ? ['finished', 'freezeOnFinish'] : [])
-                .concat(deps ? deps : []),
-        fn: function () {
-            var value;
+var State = require('ampersand-state');
+var Engine = require('chess.js').Chess;
 
-            if (typeof method === 'function') {
-                value = method.call(this);
-            } else {
-                value = this.engine[method]();
-            }
-
-            // Only update these status properties if the game is not finished
-            // This allows for replay of games where 'checkmate' (for example)
-            // will always be true based on the result
-            if (guard && this._cache.hasOwnProperty(guard) && this.finished && this.freezeOnFinish) {
-                // If this is the first time computing thie property since the game
-                // has finished, then do one more calculation of the value
-                // to get the true end-of-game value
-                var hasBeenGuarded = this._guard[guard];
-                this._guard[guard] = true;
-                return hasBeenGuarded ? this._cache[guard] : value;
-            }
-
-            return value;
-        }
-    };
-};
+var runEngine = require('./lib/runEngine');
+var runOnFen = runEngine(['fen']);
+var runOnPgn = runEngine(['pgn']);
 
 // Used for loading possibly invalid pgns without
 // changing the actual state engine
@@ -53,33 +25,37 @@ module.exports = State.extend({
     },
 
     session: {
-        future: ['array', true, emptyArray],
-        history: ['array', true, emptyArray],
+        future: ['array', true, function () { return []; }],
+        history: ['array', true, function () { return []; }],
         valid: 'boolean',
         errorMessage: 'string',
     },
 
     derived: {
-        // All these properties are guarded by this.finished
-        // meaning if the game is finished none of these properties will change
-        // unless freezeOnFinish is false
-        start: runEngine(function () { return this.fen === START_FEN; }, 'start'),
-        empty: runEngine(function () { return this.fen === EMPTY_FEN; }, 'empty'),
-        checkmate: runEngine('in_checkmate', 'checkmate'),
-        check: runEngine('in_check', 'check'),
-        draw: runEngine('in_draw', 'draw'),
-        stalemate: runEngine('in_stalemate', 'stalemate'),
-        threefoldRepetition: runEngine('in_threefold_repetition', 'threefoldRepetition'),
-        insufficientMaterial: runEngine('insufficient_material', 'insufficientMaterial'),
-        engineOver: runEngine('game_over', 'engineOver'),
-        finalPgn: runEngine(function () {
+        start: runOnFen(function () { return this.fen === START_FEN; }, 'start'),
+        empty: runOnFen(function () { return this.fen === EMPTY_FEN; }, 'empty'),
+
+        // Turn must be before any of the ending state properties because
+        // otherwise `winner` will incorrect for a tick while `checkmate` is
+        // true but the turn has not yet changed. There is a test for this.
+        turn: runOnFen(function () {
+            return this.engine.turn() === 'b' ? 'black' : 'white';
+        }, 'turn'),
+
+        checkmate: runOnFen('in_checkmate', 'checkmate'),
+        check: runOnFen('in_check', 'check'),
+        draw: runOnFen('in_draw', 'draw'),
+        stalemate: runOnFen('in_stalemate', 'stalemate'),
+        threefoldRepetition: runOnFen('in_threefold_repetition', 'threefoldRepetition'),
+        insufficientMaterial: runOnFen('insufficient_material', 'insufficientMaterial'),
+        engineOver: runOnFen('game_over', 'engineOver'),
+
+        finalPgn: runOnPgn(function () {
             return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
         }, 'finalPgn'),
-        turn: runEngine(function () { return this.engine.turn() === 'b' ? 'black' : 'white'; }, 'turn'),
-        
 
-        ascii: runEngine('ascii'),
-        moves: runEngine('moves'),
+        ascii: runOnFen('ascii', null),
+        moves: runOnFen('moves', null),
         engineHistory: {
             deps: ['fen', 'pgn', 'history'],
             fn: function () {
@@ -161,6 +137,23 @@ module.exports = State.extend({
                 return this.engineOver || this.lostOnTime;
             }
         },
+        finished: {
+            deps: ['gameOver'],
+            fn: function () {
+                // Once a game is over it is always "finished"
+                if (typeof this._cache.finished !== 'undefined' && this._cache.finished) {
+                    return true;
+                }
+
+                return this.gameOver;
+            }
+        },
+        lostOnTime: {
+            deps: ['blackTime', 'whiteTime'],
+            fn: function () {
+                return this.whiteTime === 0 || this.blackTime === 0;
+            }
+        },
         endResult: {
             deps: ['gameOver', 'lostOnTime', 'draw', 'stalemate', 'threefoldRepetition', 'insufficientMaterial'],
             fn: function () {
@@ -187,37 +180,28 @@ module.exports = State.extend({
                 }
                 return result;
             }
-        },
-        lostOnTime: {
-            deps: ['blackTime', 'whiteTime'],
-            fn: function () {
-                return this.whiteTime === 0 || this.blackTime === 0;
-            }
-        },
-        finished: {
-            deps: ['gameOver'],
-            fn: function () {
-                // Once a game is over it is always "finished"
-                if (typeof this._cache.finished !== 'undefined' && this._cache.finished) {
-                    return true;
-                }
-
-                return this.gameOver;
-            }
         }
     },
 
 
-    initialize: function () {
-        this._guard = {};
+    initialize: function (attrs) {
         this.engine = new Engine();
-        
+
+        if (attrs && attrs.fen && attrs.pgn) {
+            throw new Error('You cannot set both `fen` and `pgn` during initialization.');
+        }
+
+        if (attrs && attrs.pgn) {
+            this._testPgn(this, this.pgn);
+        }
+        // There is a default fen so if there is no pgn
+        // then we just use the default (or passed in) fen
+        else {
+            this._testFen(this, this.fen);
+        }
+
         this.on('change:fen', this._testFen);
-        this.fen && this._testFen(this, this.fen);
-
         this.on('change:pgn', this._testPgn);
-        this.pgn && this._testPgn(this, this.pgn);
-
         this.once('change:start', this.startGame);
         this.once('change:finished', this.cancelTurn);
     },
@@ -241,7 +225,7 @@ module.exports = State.extend({
         this._now = now;
         var key = turn === 'black' ? 'blackTime' : 'whiteTime';
 
-        if (this[key] === -1) {
+        if (this[key] === -1 || this[key] === 0) {
             return this.cancelTurn();
         }
 
@@ -281,7 +265,11 @@ module.exports = State.extend({
         if (this.canRedo) {
             this.future = [];
         }
-        return this._proxyAndUpdate('move', move, options);
+        var result = this._proxyAndUpdate('move', move, options);
+        if (result) {
+            this.trigger('change:move', this, result, options);
+        }
+        return result;
     },
     put: function (piece, square, options) {
         return this._proxyAndUpdate('put', piece, square, options);
@@ -323,7 +311,7 @@ module.exports = State.extend({
         }
         this.future = this.history.reverse();
         this.history = [];
-        this._updateFenFromEngine({multipleMoves: true});
+        this._updateAllFromEngine({multipleMoves: true});
         return move;
     },
     last: function () {
@@ -333,7 +321,7 @@ module.exports = State.extend({
         }
         this.history = this.future.reverse();
         this.future = [];
-        this._updateFenFromEngine({multipleMoves: true});
+        this._updateAllFromEngine({multipleMoves: true});
         return move;
     },
     random: function (options) {
@@ -356,8 +344,7 @@ module.exports = State.extend({
         var response = this._proxy.apply(this, arguments);
         var last = arguments[arguments.length - 1];
         var options = typeof last === 'object' ? last : undefined;
-        this._updateFenFromEngine(options);
-        this._updatePgnFromEngine(options);
+        this._updateAllFromEngine(options);
         return response;
     },
     _proxy: function () {
@@ -375,21 +362,29 @@ module.exports = State.extend({
         options.fromEngine = true;
         this.set(key, this.engine[key](), options);
     },
-    _updateFenFromEngine: function (options) {
+    _updateAllFromEngine: function (options) {
+        options || (options = {});
+        // This prevents syncing from pgn <--> fen
+        // since we are setting both
+        options.preventSync = true;
         this._updateFromEngine('fen', options);
-    },
-    _updatePgnFromEngine: function (options) {
         this._updateFromEngine('pgn', options);
     },
     _testFen: function (model, fen, options) {
-        var validity = this.engine.validate_fen(fen);
+        var fromEngine = options && options.fromEngine;
+        var preventSync = options && options.preventSync;
+        var validity = fromEngine ? {valid: true} : internalEngine.validate_fen(fen);
+
         if (validity.valid) {
-            if (!options || !options.fromEngine) {
+            if (!fromEngine) {
                 // Loading a fen into the enginge will
                 // disrupt the current game, clearing the history
                 // and resetting the pgn so we until do this action
                 // if the fen change did not come from the engine
                 this.engine.load(fen);
+            }
+            if (!preventSync) {
+                this._updateFromEngine('pgn', options);
             }
             this.errorMessage = '';
             this.valid = true;
@@ -398,15 +393,42 @@ module.exports = State.extend({
             this.valid = false;
         }
     },
+    _diffPgn: function (pgn) {
+        var current = this.previous('pgn');
+
+        // If there is not current or the new one
+        // doesnt start with the old one
+        if (!current || pgn.indexOf(current) !== 0) {
+            return null;
+        }
+
+        var moves = pgn.replace(current, '').replace(/\d\.\s/g, '').trim();
+        return moves.length && moves.length > 0 ? moves.split(' ') : null;
+    },
     _testPgn: function (model, pgn, options) {
-        var valid = internalEngine.load_pgn(pgn);
+        var fromEngine = options && options.fromEngine;
+        var preventSync = options && options.preventSync;
+        var valid = fromEngine ? true : internalEngine.load_pgn(pgn);
+        var nextMoves;
+
         if (valid) {
-            if (!options || !options.fromEngine) {
-                // Loading a pgn into the enginge will
-                // disrupt the current game, clearing the history
-                // and resetting the pgn so we until do this action
-                // if the fen change did not come from the engine
-                this.engine.load_pgn(pgn);
+            if (!fromEngine) {
+                nextMoves = this._diffPgn(pgn);
+                if (nextMoves) {
+                    for (var i = 0, m = nextMoves.length; i < m; i++) {
+                        this.move(nextMoves[i], options);
+                    }
+                }
+                else {
+                    // Loading a pgn into the enginge will
+                    // disrupt the current game, clearing the history
+                    // and resetting the pgn so we until do this action
+                    // if the fen change did not come from the engine
+                    this.engine.load_pgn(pgn);
+                }
+            }
+            if (!preventSync) {
+                this._updateFromEngine('fen', options);
             }
             this.errorMessage = '';
             this.valid = true;
