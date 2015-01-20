@@ -1,7 +1,7 @@
 {
   "name": "ampersand-chess-state",
   "description": "An evented chess library for movement, validation and result detection built on Ampersand.js.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "bugs": "https://github.com/lukekarrys/ampersand-chess-state/issues",
   "dependencies": {
