@@ -410,7 +410,7 @@ module.exports = State.extend({
         var valid = fromEngine ? true : internalEngine.load_pgn(pgn);
         var nextMoves;
 
-        if (valid) {
+        if (valid || pgn === '') {
             if (!fromEngine) {
                 nextMoves = this._diffPgn(pgn);
                 if (nextMoves) {
