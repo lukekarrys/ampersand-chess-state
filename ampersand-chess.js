@@ -2,11 +2,7 @@ var raf = require('raf');
 var slice = Array.prototype.slice;
 var State = require('ampersand-state');
 var Engine = require('chess.js').Chess;
-var partial = require('./lib/partial');
-
-var runEngine = require('./lib/runEngine');
-var runOnFen = partial(runEngine, ['fen']);
-var runOnPgn = partial(runEngine, ['pgn']);
+var runOnFen = require('./lib/runEngine');
 
 // Used for loading possibly invalid pgns without
 // changing the actual state engine
@@ -54,7 +50,7 @@ module.exports = State.extend({
 
         // Some "internal" derived properties
         _engineOver: runOnFen('game_over', '_engineOver'),
-        _finalPgn: runOnPgn(function () {
+        _finalPgn: runOnFen(function () {
             return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
         }, '_finalPgn'),
         _engineHistory: {
