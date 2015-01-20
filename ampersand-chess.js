@@ -56,7 +56,8 @@ module.exports = State.extend({
 
         ascii: runOnFen('ascii', null),
         moves: runOnFen('moves', null),
-        engineHistory: {
+
+        _engineHistory: {
             deps: ['fen', 'pgn', 'history'],
             fn: function () {
                 this.history = this.engine.history();

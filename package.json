@@ -1,7 +1,7 @@
 {
-  "name": "ampersand-chess",
+  "name": "ampersand-chess-state",
   "description": "An ampersand.js chess board.",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "dependencies": {
     "ampersand-state": "^4.4.4",
