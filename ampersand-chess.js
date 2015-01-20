@@ -28,7 +28,7 @@ module.exports = State.extend({
         future: ['array', true, function () { return []; }],
         history: ['array', true, function () { return []; }],
         valid: 'boolean',
-        errorMessage: 'string',
+        errorMessage: 'string'
     },
 
     derived: {
@@ -191,19 +191,20 @@ module.exports = State.extend({
             throw new Error('You cannot set both `fen` and `pgn` during initialization.');
         }
 
-        if (attrs && attrs.pgn) {
-            this._testPgn(this, this.pgn);
-        }
-        // There is a default fen so if there is no pgn
-        // then we just use the default (or passed in) fen
-        else {
-            this._testFen(this, this.fen);
-        }
+        this.setInitialValues(this);
 
         this.on('change:fen', this._testFen);
         this.on('change:pgn', this._testPgn);
         this.once('change:start', this.startGame);
         this.once('change:finished', this.cancelTurn);
+    },
+    setInitialValues: function (attrs) {
+        if (attrs.pgn) {
+            this._testPgn(this, attrs.pgn);
+        }
+        else {
+            this._testFen(this, attrs.fen || this.fen);
+        }
     },
 
 
