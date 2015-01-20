@@ -2,10 +2,11 @@ var raf = require('raf');
 var slice = Array.prototype.slice;
 var State = require('ampersand-state');
 var Engine = require('chess.js').Chess;
+var partial = require('./lib/partial');
 
 var runEngine = require('./lib/runEngine');
-var runOnFen = runEngine(['fen']);
-var runOnPgn = runEngine(['pgn']);
+var runOnFen = partial(runEngine, ['fen']);
+var runOnPgn = partial(runEngine, ['pgn']);
 
 // Used for loading possibly invalid pgns without
 // changing the actual state engine
