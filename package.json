@@ -3,9 +3,10 @@
   "description": "An evented chess library for movement, validation and result detection built on Ampersand.js.",
   "version": "0.1.0",
   "author": "Luke Karrys <luke@lukekarrys.com>",
+  "bugs": "https://github.com/lukekarrys/ampersand-chess-state/issues",
   "dependencies": {
     "ampersand-state": "^4.4.4",
-    "chess.js": "git+ssh://git@github.com/jhlywa/chess.js.git#master",
+    "chess.js": "git+https://git@github.com/jhlywa/chess.js.git#master",
     "raf": "^2.0.4"
   },
   "devDependencies": {
@@ -20,6 +21,7 @@
     "tape": "^3.2.0",
     "tape-run": "^0.3.0"
   },
+  "homepage": "https://github.com/lukekarrys/ampersand-chess-state",
   "keywords": [
     "ampersand",
     "chess",
@@ -27,9 +29,13 @@
   ],
   "license": "MIT",
   "main": "ampersand-chess.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lukekarrys/ampersand-chess-state"
+  },
   "scripts": {
+    "coverage": "covert test/*.js",
     "start": "run-browser test/* --port 3001",
-    "test": "browserify test/*.js | tape-run | tap-spec",
-    "coverage": "covert test/*.js"
+    "test": "browserify test/*.js | tape-run | tap-spec"
   }
 }
