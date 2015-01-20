@@ -48,15 +48,14 @@ module.exports = State.extend({
         stalemate: runOnFen('in_stalemate', 'stalemate'),
         threefoldRepetition: runOnFen('in_threefold_repetition', 'threefoldRepetition'),
         insufficientMaterial: runOnFen('insufficient_material', 'insufficientMaterial'),
-        engineOver: runOnFen('game_over', 'engineOver'),
-
-        finalPgn: runOnPgn(function () {
-            return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
-        }, 'finalPgn'),
-
         ascii: runOnFen('ascii', null),
         moves: runOnFen('moves', null),
 
+        // Some "internal" derived properties
+        _engineOver: runOnFen('game_over', '_engineOver'),
+        _finalPgn: runOnPgn(function () {
+            return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
+        }, '_finalPgn'),
         _engineHistory: {
             deps: ['fen', 'pgn', 'history'],
             fn: function () {
@@ -66,9 +65,9 @@ module.exports = State.extend({
         },
 
         pgnArray: {
-            deps: ['canUndo', 'canRedo', 'history', 'finalPgn'],
+            deps: ['canUndo', 'canRedo', 'history', '_finalPgn'],
             fn: function () {
-                var pgn = this.finalPgn;
+                var pgn = this._finalPgn;
 
                 if (this.canUndo || this.canRedo) {
                     var current = this.history.length;
@@ -130,19 +129,20 @@ module.exports = State.extend({
                 else if (this.checkmate) {
                     return this.turn === 'black' ? 'white' : 'black';
                 }
+                return '';
             }
         },
         gameOver: {
-            deps: ['engineOver', 'lostOnTime'],
+            deps: ['_engineOver', 'lostOnTime'],
             fn: function () {
-                return this.engineOver || this.lostOnTime;
+                return this._engineOver || this.lostOnTime;
             }
         },
-        finished: {
+        _finished: {
             deps: ['gameOver'],
             fn: function () {
                 // Once a game is over it is always "finished"
-                if (typeof this._cache.finished !== 'undefined' && this._cache.finished) {
+                if (typeof this._cache._finished !== 'undefined' && this._cache._finished) {
                     return true;
                 }
 
@@ -158,7 +158,7 @@ module.exports = State.extend({
         endResult: {
             deps: ['gameOver', 'lostOnTime', 'draw', 'stalemate', 'threefoldRepetition', 'insufficientMaterial'],
             fn: function () {
-                var result;
+                var result = '';
                 if (this.gameOver) {
                     if (this.lostOnTime) {
                         result = 'Lost on time';
@@ -196,8 +196,8 @@ module.exports = State.extend({
 
         this.on('change:fen', this._testFen);
         this.on('change:pgn', this._testPgn);
-        this.once('change:start', this.startGame);
-        this.once('change:finished', this.cancelTurn);
+        this.once('change:start', this._startGame);
+        this.once('change:_finished', this._cancelTurn);
     },
     setInitialValues: function (attrs) {
         if (attrs.pgn) {
@@ -212,29 +212,29 @@ module.exports = State.extend({
     // ------------------------
     // Turn timing
     // ------------------------
-    startGame: function () {
-        this.startTurn(this, this.turn);
-        this.on('change:turn', this.startTurn);
+    _startGame: function () {
+        this._startTurn(this, this.turn);
+        this.on('change:turn', this._startTurn);
     },
-    startTurn: function (model, turn) {
+    _startTurn: function (model, turn) {
         this._now = Date.now();
-        this.cancelTurn();
-        this._countdownId = raf(this.continueTurn.bind(this, model, turn));
+        this._cancelTurn();
+        this._countdownId = raf(this._continueTurn.bind(this, model, turn));
     },
-    continueTurn: function (model, turn) {
+    _continueTurn: function (model, turn) {
         var now = Date.now();
         var elapsed = now - this._now;
         this._now = now;
         var key = turn === 'black' ? 'blackTime' : 'whiteTime';
 
         if (this[key] === -1 || this[key] === 0) {
-            return this.cancelTurn();
+            return this._cancelTurn();
         }
 
         this[key] = Math.max(0, this[key] - elapsed);
-        this._countdownId = raf(this.continueTurn.bind(this, model, turn));
+        this._countdownId = raf(this._continueTurn.bind(this, model, turn));
     },
-    cancelTurn: function () {
+    _cancelTurn: function () {
         this._countdownId && raf.cancel(this._countdownId);
     },
 
@@ -271,7 +271,7 @@ module.exports = State.extend({
         if (result) {
             this.trigger('change:move', this, result, options);
         }
-        return result;
+        return result || null;
     },
     put: function (piece, square, options) {
         return this._proxyAndUpdate('put', piece, square, options);
@@ -292,7 +292,7 @@ module.exports = State.extend({
         if (move) {
             this.future = this.future.concat(move.san);
         }
-        return move;
+        return move || null;
     },
     redo: function (options) {
         var move = this.future[this.future.length - 1];
@@ -304,7 +304,7 @@ module.exports = State.extend({
             }
             this.future = this.future.slice(0, this.future.length - 1);
         }
-        return move;
+        return move || null;
     },
     first: function () {
         var move, moves = this.history.length;
@@ -314,7 +314,7 @@ module.exports = State.extend({
         this.future = this.history.reverse();
         this.history = [];
         this._updateAllFromEngine({multipleMoves: true});
-        return move;
+        return move || null;
     },
     last: function () {
         var move, moves = this.future.length;
@@ -324,7 +324,7 @@ module.exports = State.extend({
         this.history = this.future.reverse();
         this.future = [];
         this._updateAllFromEngine({multipleMoves: true});
-        return move;
+        return move || null;
     },
     random: function (options) {
         var move = this.moves[Math.floor(Math.random() * this.moves.length)];

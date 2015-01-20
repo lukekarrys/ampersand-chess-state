@@ -248,7 +248,7 @@ test('Checkmate/winner fen', function (t) {
 
     t.equal(chess.checkmate, false);
     t.equal(chess.gameOver, false);
-    t.equal(chess.winner, void 0);
+    t.equal(chess.winner, '');
 
     chess.move('Qxf7#');
     t.equal(chess.checkmate, true);
@@ -263,7 +263,7 @@ test('Checkmate/winner pgn', function (t) {
 
     t.equal(chess.checkmate, false);
     t.equal(chess.gameOver, false);
-    t.equal(chess.winner, void 0);
+    t.equal(chess.winner, '');
 
     chess.move('Ra8#');
     t.equal(chess.checkmate, true);
@@ -310,22 +310,22 @@ test('Once a game has been over it is always finished', function (t) {
     });
 
     t.equal(chess.checkmate, false);
-    t.equal(chess.finished, false);
+    t.equal(chess._finished, false);
     t.equal(chess.gameOver, false);
 
     chess.move('Qxf7#');
     t.equal(chess.checkmate, true);
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, true);
 
     chess.undo();
     t.equal(chess.checkmate, false);
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, false);
 
     chess.redo();
     t.equal(chess.checkmate, true);
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, true);
 
     chess = new Chess({
@@ -334,22 +334,22 @@ test('Once a game has been over it is always finished', function (t) {
     });
 
     t.equal(chess.checkmate, false);
-    t.equal(chess.finished, false);
+    t.equal(chess._finished, false);
     t.equal(chess.gameOver, false);
 
     chess.move('Qxf7#');
     t.equal(chess.checkmate, true);
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, true);
 
     chess.undo();
     t.equal(chess.checkmate, true, 'freeze checkmate');
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, true);
 
     chess.redo();
     t.equal(chess.checkmate, true);
-    t.equal(chess.finished, true);
+    t.equal(chess._finished, true);
     t.equal(chess.gameOver, true);
 
     t.end();
@@ -410,11 +410,11 @@ test('time stops at end', function (t) {
         whiteTime: 5000
     });
 
-    chess.on('change:finished', function () {
+    chess.on('change:_finished', function () {
         var whiteTime = chess.whiteTime;
         t.equal(chess.turn, 'white');
-        t.equal(chess.finished, true);
-        t.equal(chess.engineOver, true);
+        t.equal(chess._finished, true);
+        t.equal(chess._engineOver, true);
         t.equal(chess.gameOver, true);
         t.equal(chess.checkmate, true);
 
