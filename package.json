@@ -1,6 +1,6 @@
 {
   "name": "ampersand-chess-state",
-  "description": "An ampersand.js chess board.",
+  "description": "An evented chess library for movement, validation and result detection built on Ampersand.js.",
   "version": "0.0.0",
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "dependencies": {
