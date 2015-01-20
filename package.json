@@ -5,7 +5,7 @@
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "dependencies": {
     "ampersand-state": "^4.4.4",
-    "chess.js": "^0.1.0",
+    "chess.js": "git+ssh://git@github.com/jhlywa/chess.js.git#master",
     "raf": "^2.0.4"
   },
   "devDependencies": {

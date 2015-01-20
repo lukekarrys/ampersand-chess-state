@@ -47,7 +47,7 @@ test('Fen to PGN', function (t) {
         fen: '2n1r3/p1k2pp1/B1p3b1/P7/5bP1/2N1B3/1P2KP2/2R5 b - - 4 25'
     });
 
-    t.equal(chess.pgn, '[SetUp "2n1r3/p1k2pp1/B1p3b1/P7/5bP1/2N1B3/1P2KP2/2R5 b - - 4 25"]\n[FEN "1"]\n');
+    t.equal(chess.pgn, '[SetUp "1"]\n[FEN "2n1r3/p1k2pp1/B1p3b1/P7/5bP1/2N1B3/1P2KP2/2R5 b - - 4 25"]\n');
 
     t.end();
 });
@@ -440,7 +440,7 @@ test('pgn <--> fen sync', function (t) {
     t.equal(chess.fen, 'r1bqkbnr/ppp1pp1p/n2p2p1/8/8/2PPP3/PP3PPP/RNBQKBNR w KQkq - 0 4');
 
     chess.fen = 'rnbqkbnr/p1pppp1p/1p6/6p1/8/2NPP3/PPPQ1PPP/R1B1KBNR w KQkq - 0 5';
-    t.equal(chess.pgn, '[SetUp "rnbqkbnr/p1pppp1p/1p6/6p1/8/2NPP3/PPPQ1PPP/R1B1KBNR w KQkq - 0 5"]\n[FEN "1"]\n');
+    t.equal(chess.pgn, '[SetUp "1"]\n[FEN "rnbqkbnr/p1pppp1p/1p6/6p1/8/2NPP3/PPPQ1PPP/R1B1KBNR w KQkq - 0 5"]\n');
 
     t.end();
 });

@@ -57,7 +57,7 @@ chess.pgn += ' 2. f4';
 
 ## API
 
-## `props`
+### `props`
 
 #### `fen` (string)
 #### `pgn` (string)
@@ -80,7 +80,7 @@ This is a flag that if `true` will cause certain properties to be "frozen" once 
 You're most likely going to want to set this to `true` for legal games but leave it as the default for things like analysis boards, etc.
 
 
-## `derived`
+### `derived`
 
 #### `future` (array)
 #### `history` (array)
@@ -151,7 +151,7 @@ Draw - Insufficient Material
 ```
 
 
-## Methods
+### Methods
 
 All these methods change the position in someway and will trigger changes in `fen` and `pgn`. They take an `options` object as the last parameter which will be passed along when `set` is called on `fen` and/or `pgn`.
 
@@ -180,9 +180,9 @@ These methods are used mostly in analysis style situations since they allow addi
 These will change to the previous or next move in the history, or to the first or last move in the history. They will return the move to be played or `null` if no such move exists.
 
 
-### Tests
+## Tests
 Run `npm test` for the command line tests (using phantomjs) or `npm start` to open a browser with the tests.
 
 
-### LICENSE
+## LICENSE
 MIT
