@@ -398,6 +398,18 @@ test('pgn history and active', function (t) {
     t.equal(chess.valid, true);
     t.equal(chess.history.slice(0, 4).join(' '), 'e4 e5 f4 Nc6');
     t.equal(chess.pgnArray[29].ply1.active, true);
+    t.equal(chess.pgnArray[29].ply1.san, 'Ra8#');
+    t.equal(chess.pgnArray[29].move, 30);
+
+    chess.undo();
+    chess.undo();
+
+    t.equal(chess.pgnArray[29].ply1.active, void 0);
+    t.equal(chess.pgnArray[29].ply1.san, 'Ra8#');
+    t.equal(chess.pgnArray[29].move, 30);
+    t.equal(chess.pgnArray[28].ply1.active, true);
+    t.equal(chess.pgnArray[28].ply1.san, 'Qe7+');
+    t.equal(chess.pgnArray[28].move, 29);
 
     t.end();
 });
