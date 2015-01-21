@@ -1,5 +1,5 @@
 var test = require('tape');
-var Chess = require('../ampersand-chess');
+var Chess = require('../ampersand-chess-state');
 Function.prototype.bind = require('function-bind');
 
 
@@ -494,6 +494,35 @@ test('Clear pgn with empty string', function (t) {
     t.equal(chess.pgn, '');
     t.equal(chess.fen, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
     t.equal(chess.start, true);
+
+    t.end();
+});
+
+test('finalPgn stays the same during replay and after', function (t) {
+    var pgn = '1. f4 d6 2. e4 b5 3. g4 c6 4. a3 a6';
+    var chess = new Chess({pgn: pgn});
+
+    t.equal(chess._finalPgn, pgn);
+    t.equal(chess.pgn, pgn);
+
+    chess.undo();
+    chess.undo();
+    t.equal(chess.pgn, pgn.replace(' 4. a3 a6', ''));
+    t.equal(chess._finalPgn, pgn);
+
+    chess.redo();
+    chess.redo();
+    t.equal(chess.pgn, pgn);
+    t.equal(chess._finalPgn, pgn);
+
+    chess.move('b4');
+    chess.move('e5');
+    t.equal(chess.pgn, pgn + ' 5. b4 e5');
+    t.equal(chess._finalPgn, pgn + ' 5. b4 e5');
+
+    chess.pgn = '1. a4 a5 2. b4 b5';
+    t.equal(chess.pgn, '1. a4 a5 2. b4 b5');
+    t.equal(chess._finalPgn, '1. a4 a5 2. b4 b5');
 
     t.end();
 });

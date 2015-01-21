@@ -28,7 +28,7 @@ This also adds a few other conveniences not found in `chess.js`:
 
 **Load a starting position and listen for pgn/fen changes and moves**
 ```js
-var Chess = require('../ampersand-chess');
+var Chess = require('../ampersand-chess-state');
 var chess = new Chess();
 var log = function (prefix, model, value) { console.log(prefix, JSON.stringify(value)); };
 

@@ -1,6 +1,6 @@
 /* global console */
 
-var Chess = require('../ampersand-chess');
+var Chess = require('../ampersand-chess-state');
 var chess = new Chess();
 var log = function (prefix, model, value) { console.log(prefix, JSON.stringify(value)); };
 

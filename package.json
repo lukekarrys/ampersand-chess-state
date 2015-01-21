@@ -28,7 +28,7 @@
     "chessboard"
   ],
   "license": "MIT",
-  "main": "ampersand-chess.js",
+  "main": "ampersand-chess-state.js",
   "repository": {
     "type": "git",
     "url": "git://github.com/lukekarrys/ampersand-chess-state"

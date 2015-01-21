@@ -24,6 +24,7 @@ module.exports = State.extend({
     session: {
         future: ['array', true, function () { return []; }],
         history: ['array', true, function () { return []; }],
+        _finalPgn: ['string', true, ''],
         valid: 'boolean',
         errorMessage: 'string'
     },
@@ -50,9 +51,6 @@ module.exports = State.extend({
 
         // Some "internal" derived properties
         _engineOver: runOnFen('game_over', '_engineOver'),
-        _finalPgn: runOnFen(function () {
-            return this.engine.pgn({max_width: 1, newline_char: '|'}).split('|');
-        }, '_finalPgn'),
         _engineHistory: {
             deps: ['fen', 'pgn', 'history'],
             fn: function () {
@@ -64,37 +62,32 @@ module.exports = State.extend({
         pgnArray: {
             deps: ['canUndo', 'canRedo', 'history', '_finalPgn'],
             fn: function () {
-                var pgn = this._finalPgn;
+                var pgn = this._finalPgn.split(/\s?\d+\.\s/).slice(1);
 
                 if (this.canUndo || this.canRedo) {
                     var current = this.history.length;
                     var count = 0;
-                    pgn = pgn.map(function (move) {
-                        var isMove = move.match(/^\d+\.\s/);
-                        var plys, result = {};
+                    pgn = pgn.map(function (move, index) {
+                        var plys = move.split(' '), result = {};
 
-                        if (isMove) {
-                            plys = move.replace(isMove[0], '').split(' ');
-                            result.move = isMove[0].replace('. ', '');
-                            result.ply1 = {san: plys[0]};
-                            result.ply2 = {san: plys[1] || ''};
+                        result.move = index + 1;
+                        result.ply1 = {san: plys[0]};
+                        result.ply2 = {san: plys[1] || ''};
 
-                            count++;
-                            if (count === current) {
-                                result.ply1.active = true;
-                            }
-
-                            if (result.ply2.san) {
-                                count++;
-                                if (count === current) {
-                                    result.ply2.active = true;
-                                }
-                            }
-
-                            return result;
+                        count++;
+                        if (count === current) {
+                            result.ply1.active = true;
                         }
 
-                        return move;
+                        if (result.ply2.san) {
+                            count++;
+                            if (count === current) {
+                                result.ply2.active = true;
+                            }
+                        }
+
+                        return result;
+
                     });
                 }
 
@@ -326,12 +319,12 @@ module.exports = State.extend({
     random: function (options) {
         var move = this.moves[Math.floor(Math.random() * this.moves.length)];
         if (move) {
-            this.move(move, options);
+            move = this.move(move, options);
         }
-        return move;
+        return move || null;
     },
     clearEngine: function (options) {
-        this._proxyAndUpdate('clear', options);
+        return this._proxyAndUpdate('clear', options);
     },
 
 
@@ -395,7 +388,7 @@ module.exports = State.extend({
     _diffPgn: function (pgn) {
         var current = this.previous('pgn');
 
-        // If there is not current or the new one
+        // If there is no current pgn or the new one
         // doesnt start with the old one
         if (!current || pgn.indexOf(current) !== 0) {
             return null;
@@ -404,6 +397,27 @@ module.exports = State.extend({
         var moves = pgn.replace(current, '').replace(/\d\.\s/g, '').trim();
         return moves.length && moves.length > 0 ? moves.split(' ') : null;
     },
+    _getFurthestPgn: function (pgn) {
+        var finalPgn = this._finalPgn;
+        var previous = this.previous('pgn');
+        var valid = pgn && previous && pgn !== previous;
+
+        // The new pgn is a substring of the previous
+        if (valid && previous.indexOf(pgn) === 0) {
+            if (!finalPgn) {
+                return previous;
+            }
+            else {
+                if (finalPgn.indexOf(pgn) === 0) {
+                    return finalPgn;
+                } else {
+                    return pgn;
+                }
+            }
+        } else {
+            return pgn;
+        }
+    },
     _testPgn: function (model, pgn, options) {
         var fromEngine = options && options.fromEngine;
         var preventSync = options && options.preventSync;
@@ -411,6 +425,7 @@ module.exports = State.extend({
         var nextMoves;
 
         if (valid || pgn === '') {
+            this._finalPgn = this._getFurthestPgn(pgn);
             if (!fromEngine) {
                 nextMoves = this._diffPgn(pgn);
                 if (nextMoves) {
