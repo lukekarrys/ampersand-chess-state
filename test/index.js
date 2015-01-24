@@ -519,6 +519,11 @@ test('finalPgn stays the same during replay and after', function (t) {
 
     chess.undo();
     chess.undo();
+    chess.undo();
+    t.equal(chess.pgn, pgn.replace(' c6 4. a3 a6', ''));
+    t.equal(chess._finalPgn, pgn);
+
+    chess.redo();
     t.equal(chess.pgn, pgn.replace(' 4. a3 a6', ''));
     t.equal(chess._finalPgn, pgn);
 
@@ -532,8 +537,31 @@ test('finalPgn stays the same during replay and after', function (t) {
     t.equal(chess.pgn, pgn + ' 5. b4 e5');
     t.equal(chess._finalPgn, pgn + ' 5. b4 e5');
 
+    chess.first();
+    t.equal(chess.pgn, '');
+    t.equal(chess._finalPgn, pgn + ' 5. b4 e5');
+
+    chess.last();
+    t.equal(chess.pgn, pgn + ' 5. b4 e5');
+    t.equal(chess._finalPgn, pgn + ' 5. b4 e5');
+
     chess.pgn = '1. a4 a5 2. b4 b5';
     t.equal(chess.pgn, '1. a4 a5 2. b4 b5');
+    t.equal(chess._finalPgn, '1. a4 a5 2. b4 b5');
+
+    chess.undo();
+    chess.undo();
+    t.equal(chess.pgn, '1. a4 a5');
+    t.equal(chess._finalPgn, '1. a4 a5 2. b4 b5');
+
+    chess.undo();
+    chess.undo();
+    t.equal(chess.pgn, '');
+    t.equal(chess._finalPgn, '1. a4 a5 2. b4 b5');
+
+    chess.redo();
+    chess.redo();
+    t.equal(chess.pgn, '1. a4 a5');
     t.equal(chess._finalPgn, '1. a4 a5 2. b4 b5');
 
     t.end();

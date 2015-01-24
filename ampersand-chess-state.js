@@ -399,20 +399,21 @@ module.exports = State.extend({
     },
     _getFurthestPgn: function (pgn) {
         var finalPgn = this._finalPgn;
-        var previous = this.previous('pgn');
-        var valid = pgn && previous && pgn !== previous;
 
-        // The new pgn is a substring of the previous
-        if (valid && previous.indexOf(pgn) === 0) {
-            if (!finalPgn) {
-                return previous;
+        if (!pgn) {
+            return finalPgn;
+        }
+
+        // There already is a final pgn
+        if (finalPgn) {
+            if (finalPgn.indexOf(pgn) === 0) {
+                return finalPgn;
+            }
+            else if (pgn.indexOf(finalPgn) === 0) {
+                return pgn;
             }
             else {
-                if (finalPgn.indexOf(pgn) === 0) {
-                    return finalPgn;
-                } else {
-                    return pgn;
-                }
+                return pgn;
             }
         } else {
             return pgn;
