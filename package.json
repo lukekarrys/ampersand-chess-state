@@ -5,21 +5,21 @@
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "bugs": "https://github.com/lukekarrys/ampersand-chess-state/issues",
   "dependencies": {
-    "ampersand-state": "^4.4.4",
+    "ampersand-state": "^4.5.0",
     "chess.js": "git+https://git@github.com/jhlywa/chess.js.git#master",
     "raf": "^2.0.4"
   },
   "devDependencies": {
-    "browserify": "^8.1.1",
+    "browserify": "^9.0.3",
     "covert": "^1.0.1",
     "function-bind": "^1.0.2",
-    "jshint": "^2.5.11",
-    "phantomjs": "^1.9.13",
-    "precommit-hook": "^1.0.7",
-    "run-browser": "^2.0.1",
-    "tap-spec": "^2.1.2",
-    "tape": "^3.2.0",
-    "tape-run": "^0.3.0"
+    "jshint": "^2.6.3",
+    "phantomjs": "^1.9.16",
+    "precommit-hook": "^2.0.1",
+    "run-browser": "^2.0.2",
+    "tap-spec": "^2.2.2",
+    "tape": "^3.5.0",
+    "tape-run": "^1.0.0"
   },
   "homepage": "https://github.com/lukekarrys/ampersand-chess-state",
   "keywords": [
@@ -29,12 +29,17 @@
   ],
   "license": "MIT",
   "main": "ampersand-chess-state.js",
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
   "repository": {
     "type": "git",
     "url": "git://github.com/lukekarrys/ampersand-chess-state"
   },
   "scripts": {
     "coverage": "covert test/*.js",
+    "lint": "jshint .",
     "start": "run-browser test/* --port 3001",
     "test": "browserify test/*.js | tape-run | tap-spec"
   }
