@@ -5,20 +5,19 @@
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "bugs": "https://github.com/lukekarrys/ampersand-chess-state/issues",
   "dependencies": {
-    "ampersand-state": "^4.5.0",
-    "chess.js": "git+https://git@github.com/jhlywa/chess.js.git#master",
+    "ampersand-state": "^4.5.4",
+    "chess.js": "^0.9.0",
     "raf": "^2.0.4"
   },
   "devDependencies": {
-    "browserify": "^9.0.3",
-    "covert": "^1.0.1",
+    "browserify": "^10.1.3",
     "function-bind": "^1.0.2",
-    "jshint": "^2.6.3",
+    "jshint": "^2.7.0",
     "phantomjs": "^1.9.16",
     "precommit-hook": "^2.0.1",
     "run-browser": "^2.0.2",
-    "tap-spec": "^2.2.2",
-    "tape": "^3.5.0",
+    "tap-spec": "^3.0.0",
+    "tape": "^4.0.0",
     "tape-run": "^1.0.0"
   },
   "homepage": "https://github.com/lukekarrys/ampersand-chess-state",
@@ -38,7 +37,6 @@
     "url": "git://github.com/lukekarrys/ampersand-chess-state"
   },
   "scripts": {
-    "coverage": "covert test/*.js",
     "lint": "jshint .",
     "start": "run-browser test/* --port 3001",
     "test": "browserify test/*.js | tape-run | tap-spec"
