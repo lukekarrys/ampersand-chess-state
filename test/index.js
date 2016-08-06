@@ -1,6 +1,5 @@
 var test = require('tape');
 var Chess = require('../ampersand-chess-state');
-Function.prototype.bind = require('function-bind');
 
 
 test('Initialize', function (t) {
