@@ -13,7 +13,7 @@
     "browserify": "^14.0.0",
     "electron": "^1.6.1",
     "run-browser": "^2.0.2",
-    "standard": "^8.6.0",
+    "standard": "^9.0.0",
     "tap-spec": "^4.1.1",
     "tape": "^4.6.0",
     "tape-run": "^2.1.4"
