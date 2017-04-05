@@ -14,7 +14,7 @@
     "electron": "^1.6.1",
     "git-validate": "^2.2.2",
     "run-browser": "^2.0.2",
-    "standard": "^9.0.0",
+    "standard": "^10.0.0",
     "tap-spec": "^4.1.1",
     "tape": "^4.6.0",
     "tape-run": "^3.0.0"
