@@ -1,6 +1,8 @@
 ampersand-chess-state
 -------------------------
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/lukekarrys/ampersand-chess-state.svg)](https://greenkeeper.io/)
+
 [![Build Status](https://travis-ci.org/lukekarrys/ampersand-chess-state.png?branch=master)](https://travis-ci.org/lukekarrys/ampersand-chess-state)
 [![NPM](https://nodei.co/npm/ampersand-chess-state.png)](https://nodei.co/npm/ampersand-chess-state/)
 
