@@ -7,16 +7,16 @@
   "dependencies": {
     "ampersand-state": "^5.0.2",
     "chess.js": "^0.10.2",
-    "raf": "^3.2.0"
+    "raf": "^3.3.0"
   },
   "devDependencies": {
     "browserify": "^14.3.0",
-    "electron": "^1.6.1",
+    "electron": "^1.6.6",
     "git-validate": "^2.2.2",
     "run-browser": "^2.0.2",
-    "standard": "^10.0.0",
+    "standard": "^10.0.2",
     "tap-spec": "^4.1.1",
-    "tape": "^4.6.0",
+    "tape": "^4.6.3",
     "tape-run": "^3.0.0"
   },
   "homepage": "https://github.com/lukekarrys/ampersand-chess-state",
