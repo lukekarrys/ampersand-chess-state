@@ -5,7 +5,7 @@
   "author": "Luke Karrys <luke@lukekarrys.com>",
   "bugs": "https://github.com/lukekarrys/ampersand-chess-state/issues",
   "dependencies": {
-    "ampersand-state": "^5.0.2",
+    "ampersand-state": "^5.0.3",
     "chess.js": "^0.10.2",
     "raf": "^3.3.0"
   },
